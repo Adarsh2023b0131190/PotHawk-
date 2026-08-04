@@ -1,0 +1,10 @@
+venv/
+firebase-key.json
+.env
+__pycache__/
+*.pyc
+node_modules/
+pothole_data-1/
+pothole_subset/
+runs/
+*.pt
