@@ -36,6 +36,7 @@ db = firestore.client()
 
 # YOLO model load karo
 model = YOLO("runs/detect/pothawk_v1-3/weights/best.pt")
+model.half()
 
 
 def calculate_priority(box, image_width, image_height, confidence):
@@ -63,7 +64,7 @@ async def create_report(
     image_bytes = await file.read()
     image = Image.open(io.BytesIO(image_bytes))
 
-    results = model(image)
+    results = model(image,imgsz=320)
 
     detections = []
     for result in results:
