@@ -48,7 +48,7 @@ function App() {
     formData.append("longitude", location.longitude);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/report", {
+      const response = await fetch("https://pothawk.onrender.com/query", {
         method: "POST",
         body: formData,
       });
