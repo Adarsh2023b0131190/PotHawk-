@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from ultralytics import YOLO
 from PIL import Image
 import io
+import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
@@ -24,15 +25,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Firebase connect karo
-import json
-
+# Firebase connect karo (local file ya environment variable dono se kaam kare)
 firebase_key_json = os.getenv("FIREBASE_KEY_JSON")
 if firebase_key_json:
     cred = credentials.Certificate(json.loads(firebase_key_json))
 else:
     cred = credentials.Certificate("firebase-key.json")
 firebase_admin.initialize_app(cred)
+db = firestore.client()
 
 # YOLO model load karo
 model = YOLO("runs/detect/pothawk_v1-3/weights/best.pt")
