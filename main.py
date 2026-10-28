@@ -111,12 +111,16 @@ def calculate_priority(box, image_width, image_height, confidence):
 def detect_potholes(image):
     started = time.perf_counter()
     try:
+        if model is None:
+            raise RuntimeError("YOLO model is not initialized; FastAPI lifespan startup did not complete")
+        logger.info("report stage=yolo_predict start imgsz=%d device=cpu", INFERENCE_SIZE)
         results = model.predict(
             source=image,
             imgsz=INFERENCE_SIZE,
             device="cpu",
             verbose=False,
         )
+        logger.info("report stage=yolo_predict returned seconds=%.3f", time.perf_counter() - started)
     except Exception:
         logger.exception("report stage=prediction failed seconds=%.3f rss_mb=%s", time.perf_counter() - started, process_rss_mb())
         raise
@@ -264,10 +268,16 @@ async def create_report(
             len(image_bytes), read_seconds, decode_seconds, image.size
         )
 
-        stage_started = time.perf_counter()
+        lock_started = time.perf_counter()
+        logger.info("report stage=inference_lock waiting elapsed_seconds=%.3f", lock_started - request_started)
         async with inference_lock:
+            logger.info(
+                "report stage=inference_lock acquired lock_wait_seconds=%.3f",
+                time.perf_counter() - lock_started,
+            )
+            prediction_started = time.perf_counter()
             detections = await run_in_threadpool(detect_potholes, image)
-        inference_seconds = time.perf_counter() - stage_started
+            inference_seconds = time.perf_counter() - prediction_started
 
         max_priority = max((detection["priority"] for detection in detections), default=0)
         report_data = {
@@ -289,6 +299,11 @@ async def create_report(
             logger.exception("report stage=firestore_write failed seconds=%.3f", time.perf_counter() - firestore_started)
             raise
         firestore_seconds = time.perf_counter() - firestore_started
+        logger.info(
+            "report stage=firestore_write saved seconds=%.3f report_id=%s",
+            firestore_seconds,
+            doc_ref[1].id,
+        )
         logger.info(
             "report complete inference_seconds=%.3f firestore_write_seconds=%.3f total_seconds=%.3f rss_mb=%s",
             inference_seconds, firestore_seconds, time.perf_counter() - request_started, process_rss_mb()
